@@ -88,6 +88,8 @@ class Categorical(Distribution):
     def __init__(self, probs: FloatArray) -> None:
         super().__init__()
 
+        if not isinstance(probs, np.ndarray):
+            probs = np.array(probs)
         self.probs = probs
         self.support = np.arange(self.probs.size)
 
@@ -114,5 +116,6 @@ class Categorical(Distribution):
         if not isinstance(x, np.ndarray):
             x = np.array(x)
         supports = np.tile(self.support, (x.size, 1))
+        x = np.expand_dims(x, 1)
         indicator = np.where(supports <= x, 1, 0)
         return np.sum(self.probs * indicator, keepdims=False)
