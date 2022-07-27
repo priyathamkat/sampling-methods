@@ -4,6 +4,12 @@ from scipy.special import erf, erfinv
 
 FloatArray = npt.NDArray[np.float64]
 
+def accept_sequence(func):
+    def inner(self, x, **args):
+        if not isinstance(x, np.ndarray):
+            x = np.array(x)
+        return func(self, x, **args)
+    return inner
 
 class Distribution:
     def __init__(self) -> None:
@@ -68,18 +74,22 @@ class Normal(Distribution):
     def sample(self, n: int) -> FloatArray:
         return self._rng.normal(loc=self.mean, scale=self.stddev, size=n)
 
+    @accept_sequence
     def pdf(self, x: FloatArray) -> FloatArray:
         z = (x - self.mean) / self.stddev
         return np.exp(-(z ** 2) / 2) / (np.sqrt(2 * np.pi) * self.stddev)
 
+    @accept_sequence
     def log_pdf(self, x: FloatArray) -> FloatArray:
         z = (x - self.mean) / self.stddev
         return -(z ** 2) / 2 - 0.5 * np.log(2 * np.pi * self.variance)
 
+    @accept_sequence
     def cdf(self, x: FloatArray) -> FloatArray:
         z = (x - self.mean) / self.stddev
         return 0.5 * (1 + erf(z / np.sqrt(2)))
 
+    @accept_sequence
     def icdf(self, x: FloatArray) -> FloatArray:
         return self.stddev * np.sqrt(2) * erfinv(2 * x - 1) + self.mean
 
@@ -112,9 +122,8 @@ class Categorical(Distribution):
     def sample(self, n: int) -> FloatArray:
         return self._rng.choice(self.probs.size, size=n, p=self.probs)
 
+    @accept_sequence
     def cdf(self, x: FloatArray) -> FloatArray:
-        if not isinstance(x, np.ndarray):
-            x = np.array(x)
         supports = np.tile(self.support, (x.size, 1))
         x = np.expand_dims(x, 1)
         indicator = np.where(supports <= x, 1, 0)
