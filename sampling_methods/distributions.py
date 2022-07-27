@@ -43,7 +43,7 @@ class Distribution:
 
 
 class Normal(Distribution):
-    def __init__(self, loc, scale) -> None:
+    def __init__(self, loc: float, scale: float) -> None:
         super().__init__()
 
         self.loc = loc
@@ -85,7 +85,7 @@ class Normal(Distribution):
 
 
 class Categorical(Distribution):
-    def __init__(self, probs) -> None:
+    def __init__(self, probs: FloatArray) -> None:
         super().__init__()
 
         self.probs = probs
