@@ -82,3 +82,37 @@ class Normal(Distribution):
 
     def icdf(self, x: FloatArray) -> FloatArray:
         return self.stddev * np.sqrt(2) * erfinv(2 * x - 1) + self.mean
+
+
+class Categorical(Distribution):
+    def __init__(self, probs) -> None:
+        super().__init__()
+
+        self.probs = probs
+        self.support = np.arange(self.probs.size)
+
+    @property
+    def mean(self):
+        return np.sum(self.probs * self.support)
+
+    @property
+    def mode(self):
+        return np.argmax(self.probs)
+
+    @property
+    def variance(self):
+        return np.sum(self.probs * self.support ** 2) - self.mean ** 2
+
+    @property
+    def stddev(self):
+        return np.sqrt(self.variance)
+
+    def sample(self, n: int) -> FloatArray:
+        return self._rng.choice(self.probs.size, size=n, p=self.probs)
+
+    def cdf(self, x: FloatArray) -> FloatArray:
+        if not isinstance(x, np.ndarray):
+            x = np.array(x)
+        supports = np.tile(self.support, (x.size, 1))
+        indicator = np.where(supports <= x, 1, 0)
+        return np.sum(self.probs * indicator, keepdims=False)
