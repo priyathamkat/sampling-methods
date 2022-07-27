@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy as np
 import numpy.typing as npt
 from scipy.special import erf, erfinv
@@ -127,4 +129,42 @@ class Categorical(Distribution):
         supports = np.tile(self.support, (x.size, 1))
         x = np.expand_dims(x, 1)
         indicator = np.where(supports <= x, 1, 0)
-        return np.sum(self.probs * indicator, keepdims=False)
+        return np.sum(self.probs * indicator, axis=1, keepdims=False)
+
+
+class Mixture(Distribution):
+    def __init__(self, mixture: Categorical, components: List[Distribution]) -> None:
+        super().__init__()
+
+        self.mixture = mixture
+        self.components = components
+
+    @property
+    def mean(self):
+        return np.sum(
+            self.mixture.probs
+            * np.array([component.mean for component in self.components])
+        )
+
+    @property
+    def variance(self):
+        return (
+            np.sum(
+                self.mixture.probs
+                * np.array(
+                    component.variance ** 2 + component.mean ** 2
+                    for component in self.components
+                )
+            )
+            - self.mean ** 2
+        )
+
+    @property
+    def stddev(self):
+        return np.sqrt(self.variance)
+
+    def sample(self, n: int) -> FloatArray:
+        return self._rng.choice(self.probs.size, size=n, p=self.probs)
+
+    def cdf(self, x: FloatArray) -> FloatArray:
+        return np.sum(np.expand_dims(self.mixture.probs, -1) * np.vstack([component.cdf(x) for component in self.components]), axis=0, keepdims=False)
