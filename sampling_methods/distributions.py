@@ -6,12 +6,15 @@ from scipy.special import erf, erfinv
 
 FloatArray = npt.NDArray[np.float64]
 
+
 def accept_sequence(func):
     def inner(self, x, **args):
         if not isinstance(x, np.ndarray):
             x = np.array(x)
         return func(self, x, **args)
+
     return inner
+
 
 class Distribution:
     def __init__(self) -> None:
@@ -96,6 +99,40 @@ class Normal(Distribution):
         return self.stddev * np.sqrt(2) * erfinv(2 * x - 1) + self.mean
 
 
+class Cauchy(Distribution):
+    def __init__(self, loc: float, scale: float) -> None:
+        super().__init__()
+
+        self.loc = loc
+        self.scale = scale
+
+    @property
+    def mode(self):
+        return self.loc
+
+    def sample(self, n: int) -> FloatArray:
+        return self.scale * self._rng.standard_cauchy(size=n) + self.loc
+
+    @accept_sequence
+    def pdf(self, x: FloatArray) -> FloatArray:
+        z = (x - self.loc) / self.scale
+        return 1 / (np.pi * self.scale * (1 + z ** 2))
+
+    @accept_sequence
+    def log_pdf(self, x: FloatArray) -> FloatArray:
+        z = (x - self.loc) / self.scale
+        return -np.log(np.pi * self.scale * (1 + z ** 2))
+
+    @accept_sequence
+    def cdf(self, x: FloatArray) -> FloatArray:
+        z = (x - self.loc) / self.scale
+        return 0.5 + np.arctan(z) / np.pi
+
+    @accept_sequence
+    def icdf(self, x: FloatArray) -> FloatArray:
+        return np.tan(np.pi * (x - 0.5))
+
+
 class Categorical(Distribution):
     def __init__(self, probs: FloatArray) -> None:
         super().__init__()
@@ -167,4 +204,10 @@ class Mixture(Distribution):
         return self._rng.choice(self.probs.size, size=n, p=self.probs)
 
     def cdf(self, x: FloatArray) -> FloatArray:
-        return np.sum(np.expand_dims(self.mixture.probs, -1) * np.vstack([component.cdf(x) for component in self.components]), axis=0, keepdims=False)
+        return np.sum(
+            np.expand_dims(self.mixture.probs, -1)
+            * np.vstack([component.cdf(x) for component in self.components]),
+            axis=0,
+            keepdims=False,
+        )
+
